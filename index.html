@@ -72,6 +72,23 @@
   .sheet .tot .gap { height:14px; padding:0; }
   .sheet .tot .bd { border-top:2px solid var(--line); border-bottom:2px solid var(--line); margin-top:6px; padding-top:8px; padding-bottom:8px; font-size:21px; font-weight:700; }
   .sheet .notes2 { margin-top:60px; }
+  .photos { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
+  .photos:empty { display:none; }
+  .ph { position:relative; border:1px solid #eee; border-radius:10px; padding:6px; background:#fff; }
+  .ph img { display:block; width:100%; height:120px; object-fit:cover; border-radius:6px; background:#f4f2f3; }
+  .ph input { margin-top:6px; font-size:16px; padding:8px 9px; }
+  .ph .rm { position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:50%; border:0; background:rgba(0,0,0,.55); color:#fff; font-size:18px; line-height:30px; padding:0; }
+  .upload { position:relative; overflow:hidden; }
+  .upload input { position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; font-size:0; }
+  .photo-hint { font-size:13px; color:var(--muted); margin:8px 0 0; text-align:center; }
+  .sheet + .sheet { margin-top:24px; }
+  .sheet .phhead { display:flex; justify-content:space-between; align-items:flex-end; margin:6px 0 18px; }
+  .sheet .phhead h1 { margin:0; }
+  .sheet .phgrid { display:grid; grid-template-columns:1fr 1fr; gap:22px 26px; }
+  .sheet .fig { text-align:center; }
+  .sheet .fig .box { height:300px; display:flex; align-items:center; justify-content:center; background:#faf8f9; border:1px solid #f0e6ea; border-radius:6px; }
+  .sheet .fig img { display:block; }
+  .sheet .fig .cap { margin-top:6px; font-size:12.5px; }
   #pdfHolder { position:absolute; left:-10000px; top:0; width:794px; }
 </style>
 </head>
@@ -103,6 +120,13 @@
   <h2>Items</h2>
   <div id="lines"></div>
   <button class="btn" id="addLine" type="button">+ Add item</button>
+
+  <h2>Photos</h2>
+  <div class="card">
+    <div class="photos" id="photos"></div>
+    <div class="btn upload" id="addPhotosBtn">+ Add photos<input id="photoInput" type="file" accept="image/*" multiple aria-label="Add photos"></div>
+    <p class="photo-hint" id="photoHint">Optional. Photos are added on a separate page of the PDF.</p>
+  </div>
 
   <h2>Totals</h2>
   <div class="card totals">
@@ -224,6 +248,67 @@ function sheetHTML(s, c){
     '</div></div>';
 }
 
+var photos = [], MAX_PHOTOS = 12, PER_PAGE = 6;
+function shrink(file){
+  return new Promise(function(resolve, reject){
+    var url = URL.createObjectURL(file), im = new Image();
+    im.onload = function(){
+      var max = 1400, w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+      var cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+      var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+      var ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch); ctx.drawImage(im, 0, 0, cw, ch);
+      URL.revokeObjectURL(url);
+      resolve({ src: cv.toDataURL('image/jpeg', 0.85), w: cw, h: ch, cap: '' });
+    };
+    im.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    im.src = url;
+  });
+}
+function renderPhotos(){
+  var g = $('photos'); g.innerHTML = '';
+  photos.forEach(function(p, i){
+    var d = document.createElement('div'); d.className = 'ph';
+    d.innerHTML = '<img alt=""><button class="rm" type="button" aria-label="Remove photo">&times;</button><input placeholder="Add caption" autocomplete="off">';
+    d.querySelector('img').src = p.src;
+    var cap = d.querySelector('input'); cap.value = p.cap;
+    cap.addEventListener('input', function(){ p.cap = cap.value; });
+    d.querySelector('.rm').addEventListener('click', function(){ photos.splice(i, 1); renderPhotos(); update(); });
+    g.appendChild(d);
+  });
+  $('addPhotosBtn').style.display = photos.length >= MAX_PHOTOS ? 'none' : '';
+  $('photoHint').textContent = photos.length ? photos.length + ' of ' + MAX_PHOTOS + ' photos. They go on a separate page of the PDF.' : 'Optional. Photos are added on a separate page of the PDF.';
+}
+$('photoInput').addEventListener('change', function(e){
+  e.stopPropagation();
+  var files = Array.prototype.slice.call(this.files || []).slice(0, MAX_PHOTOS - photos.length);
+  this.value = '';
+  if (!files.length) return;
+  $('photoHint').textContent = 'Adding photos…';
+  var failed = 0;
+  files.reduce(function(chain, f){
+    return chain.then(function(){ return shrink(f).then(function(p){ photos.push(p); }, function(){ failed++; }); });
+  }, Promise.resolve()).then(function(){
+    renderPhotos(); update();
+    if (failed) $('photoHint').textContent = failed + ' photo(s) could not be read. Try a JPEG or PNG.';
+  });
+});
+function photoSheetsHTML(s){
+  var out = [], pages = Math.ceil(photos.length / PER_PAGE);
+  for (var pg = 0; pg < pages; pg++) {
+    var figs = photos.slice(pg * PER_PAGE, pg * PER_PAGE + PER_PAGE).map(function(p){
+      var bw = 340, bh = 290, k = Math.min(bw / p.w, bh / p.h), w = Math.round(p.w * k), h = Math.round(p.h * k);
+      return '<div class="fig"><div class="box"><img src="' + p.src + '" style="width:' + w + 'px;height:' + h + 'px"></div>' +
+        (p.cap.trim() ? '<div class="cap">' + esc(p.cap) + '</div>' : '') + '</div>';
+    }).join('');
+    out.push('<div class="sheet"><img class="banner" src="' + BANNER + '"><div class="content">' +
+      '<div class="phhead"><img src="' + LOGO + '" style="width:200px;display:block"><div class="inv"><h1>Photos</h1>' +
+      (s.invNo.trim() ? '<div>Invoice No: ' + esc(s.invNo) + '</div>' : '') + (pages > 1 ? '<div>Page ' + (pg + 1) + ' of ' + pages + '</div>' : '') +
+      '</div></div><div class="phgrid">' + figs + '</div></div></div>');
+  }
+  return out;
+}
+function allSheets(s, c){ return [sheetHTML(s, c)].concat(photoSheetsHTML(s)); }
+
 var pdfBlob = null, pdfUrl = null, pdfName = '';
 function clearPdf(){
   if (pdfUrl) { try { URL.revokeObjectURL(pdfUrl); } catch(e){} }
@@ -232,7 +317,7 @@ function clearPdf(){
 function fitPreview(){
   var w = $('pv').clientWidth, sc = w / 794, inner = $('pvInner');
   inner.style.transform = 'scale(' + sc + ')';
-  var sh = inner.firstChild; $('pv').style.height = (sh ? sh.offsetHeight * sc : 0) + 'px';
+  $('pv').style.height = (inner.scrollHeight * sc) + 'px';
 }
 function update(){
   var s = state(), c = compute(s);
@@ -245,7 +330,7 @@ function update(){
   $('dueDate').value = c.due;
   $('sub').textContent = money(c.sub); $('vatLbl').textContent = 'VAT ' + c.vp + '%'; $('vat').textContent = money(c.vat);
   $('tot').textContent = money(c.tot); $('paidOut').textContent = money(c.paid); $('bal').textContent = money(c.bal);
-  $('pvInner').innerHTML = sheetHTML(s, c); fitPreview();
+  $('pvInner').innerHTML = allSheets(s, c).join(''); fitPreview();
   save(s); clearPdf(); $('status').textContent = '';
 }
 
@@ -268,7 +353,7 @@ $('addLine').addEventListener('click', function(){ addLine(); update(); });
 $('reset').addEventListener('click', function(){
   if (!window.confirm || window.confirm('Clear everything you have entered?')) {
     ['invNo','invDate','terms','billTo','vatPct','paid'].forEach(function(id){ $(id).value = ''; });
-    $('lines').innerHTML = ''; addLine(); update(); window.scrollTo(0, 0);
+    $('lines').innerHTML = ''; addLine(); photos = []; renderPhotos(); update(); window.scrollTo(0, 0);
   }
 });
 
@@ -276,15 +361,26 @@ $('makePdf').addEventListener('click', function(){
   var btn = $('makePdf'); btn.disabled = true; $('status').textContent = 'Creating PDF…';
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   var s = state(), c = compute(s), holder = $('pdfHolder');
-  holder.innerHTML = sheetHTML(s, c);
+  var sheets = allSheets(s, c);
+  var pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' }), first = true;
   var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-  ready.then(function(){
-    return html2canvas(holder.firstChild, { scale:2, backgroundColor:'#ffffff', width:794, windowWidth:794, logging:false });
-  }).then(function(canvas){
+  sheets.reduce(function(chain, html, idx){
+    return chain.then(function(){
+      $('status').textContent = sheets.length > 1 ? 'Creating PDF… page ' + (idx + 1) + ' of ' + sheets.length : 'Creating PDF…';
+      holder.innerHTML = html;
+      var imgs = holder.querySelectorAll('img');
+      return Promise.all(Array.prototype.map.call(imgs, function(im){
+        return im.complete ? null : new Promise(function(r){ im.onload = im.onerror = r; });
+      }));
+    }).then(function(){
+      return html2canvas(holder.firstChild, { scale:2, backgroundColor:'#ffffff', width:794, windowWidth:794, logging:false });
+    }).then(function(canvas){
+      var pw = 210, ph = 297, ih = canvas.height * pw / canvas.width, img = canvas.toDataURL('image/jpeg', 0.88), y = 0;
+      do { if (!first) pdf.addPage(); first = false; pdf.addImage(img, 'JPEG', 0, -y, pw, ih); y += ph; } while (y < ih - 2);
+      canvas.width = canvas.height = 0;
+    });
+  }, ready).then(function(){
     holder.innerHTML = '';
-    var pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' });
-    var pw = 210, ph = 297, ih = canvas.height * pw / canvas.width, img = canvas.toDataURL('image/jpeg', 0.9), y = 0;
-    do { if (y > 0) pdf.addPage(); pdf.addImage(img, 'JPEG', 0, -y, pw, ih); y += ph; } while (y < ih - 2);
     var client = (s.billTo.split('\n')[0] || '').trim().replace(/[^\w\- ]+/g, '').slice(0, 40);
     pdfName = 'Exclusive Bake Invoice' + (s.invNo.trim() ? ' ' + s.invNo.trim().replace(/[^\w\-]+/g, '') : '') + (client ? ' - ' + client : '') + '.pdf';
     pdfBlob = pdf.output('blob');
