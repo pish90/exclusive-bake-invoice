@@ -58,37 +58,32 @@
   .sheet h1 { margin:6px 0 8px; font-size:26px; color:#555; }
   .sheet .meta { display:grid; grid-template-columns:auto 130px; gap:2px 18px; text-align:right; }
   .sheet .k { font-weight:700; }
-  .sheet .rule { border:0; border-top:1px solid #e6e6e6; margin:28px -36px 22px; }
-  .sheet .billto { display:grid; grid-template-columns:100px 1fr; min-height:100px; }
+  .sheet .rule { border:0; border-top:1px solid #e6e6e6; margin:22px -36px 18px; }
+  .sheet .billto { display:grid; grid-template-columns:100px 1fr; min-height:72px; }
   .sheet .pre { white-space:pre-wrap; }
-  .sheet table { width:calc(100% + 36px); margin:30px 0 0; border-collapse:collapse; }
+  .sheet table { width:calc(100% + 36px); margin:22px 0 0; border-collapse:collapse; }
   .sheet th { font-weight:700; text-align:left; padding:10px 0; border-top:2px solid var(--line); border-bottom:2px solid var(--line); }
-  .sheet td { padding:12px 0 22px; vertical-align:top; border-bottom:1px solid #eee; }
+  .sheet td { padding:12px 0 16px; vertical-align:top; border-bottom:1px solid #eee; }
   .sheet .r { text-align:right; } .sheet .c { text-align:center; }
   .sheet .lastcol { padding-right:36px; }
-  .sheet .tot { margin:28px -36px 0 auto; width:420px; }
+  .sheet .tot { margin:22px -36px 0 auto; width:420px; }
   .sheet .tot div { display:grid; grid-template-columns:1fr 150px; padding:4px 36px 4px 0; text-align:right; }
   .sheet .tot div span:first-child { padding-right:26px; }
   .sheet .tot .gap { height:14px; padding:0; }
   .sheet .tot .bd { border-top:2px solid var(--line); border-bottom:2px solid var(--line); margin-top:6px; padding-top:8px; padding-bottom:8px; font-size:21px; font-weight:700; }
-  .sheet .notes2 { margin-top:60px; }
-  .photos { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
-  .photos:empty { display:none; }
-  .ph { position:relative; border:1px solid #eee; border-radius:10px; padding:6px; background:#fff; }
-  .ph img { display:block; width:100%; height:120px; object-fit:cover; border-radius:6px; background:#f4f2f3; }
-  .ph input { margin-top:6px; font-size:16px; padding:8px 9px; }
-  .ph .rm { position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:50%; border:0; background:rgba(0,0,0,.55); color:#fff; font-size:18px; line-height:30px; padding:0; }
+  .sheet .notes2 { margin-top:36px; }
   .upload { position:relative; overflow:hidden; }
   .upload input { position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; font-size:0; }
+  .lphotos { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:2px 0 10px; }
+  .lphotos:empty { display:none; }
+  .lphotos .ph { position:relative; }
+  .lphotos img { display:block; width:100%; aspect-ratio:1/1; height:auto; object-fit:cover; border-radius:8px; background:#f4f2f3; }
+  .lphotos .x { position:absolute; top:4px; right:4px; width:26px; height:26px; border-radius:50%; border:0; background:rgba(0,0,0,.55); color:#fff; font-size:16px; line-height:26px; padding:0; }
+  .btn.small { font-size:14px; padding:10px; margin-bottom:12px; font-weight:700; }
+  .sheet .dphotos { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .sheet .dphotos img { display:block; border-radius:4px; }
   .photo-hint { font-size:13px; color:var(--muted); margin:8px 0 0; text-align:center; }
   .sheet + .sheet { margin-top:24px; }
-  .sheet .phhead { display:flex; justify-content:space-between; align-items:flex-end; margin:6px 0 18px; }
-  .sheet .phhead h1 { margin:0; }
-  .sheet .phgrid { display:grid; grid-template-columns:1fr 1fr; gap:22px 26px; }
-  .sheet .fig { text-align:center; }
-  .sheet .fig .box { height:300px; display:flex; align-items:center; justify-content:center; background:#faf8f9; border:1px solid #f0e6ea; border-radius:6px; }
-  .sheet .fig img { display:block; }
-  .sheet .fig .cap { margin-top:6px; font-size:12.5px; }
   #pdfHolder { position:absolute; left:-10000px; top:0; width:794px; }
 </style>
 </head>
@@ -120,13 +115,6 @@
   <h2>Items</h2>
   <div id="lines"></div>
   <button class="btn" id="addLine" type="button">+ Add item</button>
-
-  <h2>Photos</h2>
-  <div class="card">
-    <div class="photos" id="photos"></div>
-    <div class="btn upload" id="addPhotosBtn">+ Add photos<input id="photoInput" type="file" accept="image/*" multiple aria-label="Add photos"></div>
-    <p class="photo-hint" id="photoHint">Optional. Photos are added on a separate page of the PDF.</p>
-  </div>
 
   <h2>Totals</h2>
   <div class="card totals">
@@ -186,10 +174,33 @@ function addLine(item){
   var d = document.createElement('div'); d.className = 'card line';
   d.innerHTML = '<div class="num"></div><button class="rm" type="button" aria-label="Remove item">&times;</button>' +
     '<div class="field"><label>Description</label><textarea class="desc" rows="3" placeholder="e.g. Celebration cake, flavour, theme"></textarea></div>' +
+    '<div class="lphotos"></div><div class="btn upload small">+ Add photo<input type="file" accept="image/*" multiple aria-label="Add photo"></div>' +
     '<div class="row2"><div class="field"><label>Quantity</label><input class="qty" inputmode="decimal" placeholder="1" autocomplete="off"></div>' +
     '<div class="field"><label>Price (R)</label><input class="rate" inputmode="decimal" placeholder="0.00" autocomplete="off"></div></div>' +
     '<div class="amt">Amount: <span>R 0.00</span></div>';
   d.querySelector('.desc').value = item.desc; d.querySelector('.qty').value = item.qty; d.querySelector('.rate').value = item.rate;
+  d._photos = [];
+  var fin = d.querySelector('input[type=file]'), upBtn = fin.parentNode;
+  function drawThumbs(){
+    var g = d.querySelector('.lphotos'); g.innerHTML = '';
+    d._photos.forEach(function(p, i){
+      var t = document.createElement('div'); t.className = 'ph';
+      t.innerHTML = '<img alt=""><button class="x" type="button" aria-label="Remove photo">&times;</button>';
+      t.querySelector('img').src = p.src;
+      t.querySelector('.x').addEventListener('click', function(){ d._photos.splice(i, 1); drawThumbs(); update(); });
+      g.appendChild(t);
+    });
+    upBtn.style.display = d._photos.length >= MAX_PER_LINE ? 'none' : '';
+    upBtn.firstChild.nodeValue = d._photos.length ? '+ Add another photo' : '+ Add photo';
+  }
+  fin.addEventListener('change', function(e){
+    e.stopPropagation();
+    var files = Array.prototype.slice.call(fin.files || []).slice(0, MAX_PER_LINE - d._photos.length);
+    fin.value = ''; if (!files.length) return;
+    upBtn.firstChild.nodeValue = 'Adding…';
+    files.reduce(function(ch, f){ return ch.then(function(){ return shrink(f).then(function(p){ d._photos.push(p); }, function(){}); }); }, Promise.resolve())
+      .then(function(){ drawThumbs(); update(); });
+  });
   d.querySelector('.rm').addEventListener('click', function(){
     d.parentNode.removeChild(d); if (!document.querySelector('.line')) addLine(); update();
   });
@@ -198,18 +209,18 @@ function addLine(item){
 function state(){
   var items = [];
   var ls = document.querySelectorAll('.line');
-  for (var i = 0; i < ls.length; i++) items.push({ desc: ls[i].querySelector('.desc').value, qty: ls[i].querySelector('.qty').value, rate: ls[i].querySelector('.rate').value });
+  for (var i = 0; i < ls.length; i++) items.push({ desc: ls[i].querySelector('.desc').value, qty: ls[i].querySelector('.qty').value, rate: ls[i].querySelector('.rate').value, photos: ls[i]._photos || [] });
   return { invNo:$('invNo').value, invDate:$('invDate').value, terms:$('terms').value, billTo:$('billTo').value,
     vatPct:$('vatPct').value, paid:$('paid').value, items:items };
 }
-function save(s){ try { localStorage.setItem(LS, JSON.stringify(s)); } catch(e){} }
+function save(s){ try { localStorage.setItem(LS, JSON.stringify(s, function(k, v){ return k === 'photos' ? undefined : v; })); } catch(e){} }
 function load(){ try { return JSON.parse(localStorage.getItem(LS)); } catch(e){ return null; } }
 
 function compute(s){
   var sub = 0, rows = [];
   s.items.forEach(function(it){
     var q = num(it.qty), r = num(it.rate), a = q * r;
-    if (it.desc.trim() || it.qty.trim() || it.rate.trim()) rows.push({ desc:it.desc, qty:it.qty.trim(), rate:it.rate.trim() ? money(r) : '', amt:(it.qty.trim() || it.rate.trim()) ? money(a) : '' });
+    if (it.desc.trim() || it.qty.trim() || it.rate.trim() || it.photos.length) rows.push({ photos:it.photos, desc:it.desc, qty:it.qty.trim(), rate:it.rate.trim() ? money(r) : '', amt:(it.qty.trim() || it.rate.trim()) ? money(a) : '' });
     sub += a;
   });
   var vp = num(s.vatPct), vat = sub * vp / 100, tot = sub + vat, paid = num(s.paid);
@@ -221,7 +232,14 @@ function compute(s){
 
 function sheetHTML(s, c){
   var rows = c.rows.map(function(r){
-    return '<tr><td class="pre">' + esc(r.desc) + '</td><td class="c">' + esc(r.qty) + '</td><td class="r">' + r.rate + '</td><td class="r lastcol">' + r.amt + '</td></tr>';
+    var ph = '';
+    if (r.photos.length) {
+      var n = r.photos.length, box = n === 1 ? 180 : 130;
+      ph = '<div class="dphotos">' + r.photos.map(function(p){
+        var k = Math.min(box / p.w, box / p.h); return '<img src="' + p.src + '" style="width:' + Math.round(p.w * k) + 'px;height:' + Math.round(p.h * k) + 'px">';
+      }).join('') + '</div>';
+    }
+    return '<tr><td><div class="pre">' + esc(r.desc) + '</div>' + ph + '</td><td class="c">' + esc(r.qty) + '</td><td class="r">' + r.rate + '</td><td class="r lastcol">' + r.amt + '</td></tr>';
   }).join('');
   return '<div class="sheet">' +
     '<img class="banner" src="' + BANNER + '">' +
@@ -248,7 +266,7 @@ function sheetHTML(s, c){
     '</div></div>';
 }
 
-var photos = [], MAX_PHOTOS = 12, PER_PAGE = 6;
+var MAX_PER_LINE = 4;
 function shrink(file){
   return new Promise(function(resolve, reject){
     var url = URL.createObjectURL(file), im = new Image();
@@ -264,51 +282,6 @@ function shrink(file){
     im.src = url;
   });
 }
-function renderPhotos(){
-  var g = $('photos'); g.innerHTML = '';
-  photos.forEach(function(p, i){
-    var d = document.createElement('div'); d.className = 'ph';
-    d.innerHTML = '<img alt=""><button class="rm" type="button" aria-label="Remove photo">&times;</button><input placeholder="Add caption" autocomplete="off">';
-    d.querySelector('img').src = p.src;
-    var cap = d.querySelector('input'); cap.value = p.cap;
-    cap.addEventListener('input', function(){ p.cap = cap.value; });
-    d.querySelector('.rm').addEventListener('click', function(){ photos.splice(i, 1); renderPhotos(); update(); });
-    g.appendChild(d);
-  });
-  $('addPhotosBtn').style.display = photos.length >= MAX_PHOTOS ? 'none' : '';
-  $('photoHint').textContent = photos.length ? photos.length + ' of ' + MAX_PHOTOS + ' photos. They go on a separate page of the PDF.' : 'Optional. Photos are added on a separate page of the PDF.';
-}
-$('photoInput').addEventListener('change', function(e){
-  e.stopPropagation();
-  var files = Array.prototype.slice.call(this.files || []).slice(0, MAX_PHOTOS - photos.length);
-  this.value = '';
-  if (!files.length) return;
-  $('photoHint').textContent = 'Adding photos…';
-  var failed = 0;
-  files.reduce(function(chain, f){
-    return chain.then(function(){ return shrink(f).then(function(p){ photos.push(p); }, function(){ failed++; }); });
-  }, Promise.resolve()).then(function(){
-    renderPhotos(); update();
-    if (failed) $('photoHint').textContent = failed + ' photo(s) could not be read. Try a JPEG or PNG.';
-  });
-});
-function photoSheetsHTML(s){
-  var out = [], pages = Math.ceil(photos.length / PER_PAGE);
-  for (var pg = 0; pg < pages; pg++) {
-    var figs = photos.slice(pg * PER_PAGE, pg * PER_PAGE + PER_PAGE).map(function(p){
-      var bw = 340, bh = 290, k = Math.min(bw / p.w, bh / p.h), w = Math.round(p.w * k), h = Math.round(p.h * k);
-      return '<div class="fig"><div class="box"><img src="' + p.src + '" style="width:' + w + 'px;height:' + h + 'px"></div>' +
-        (p.cap.trim() ? '<div class="cap">' + esc(p.cap) + '</div>' : '') + '</div>';
-    }).join('');
-    out.push('<div class="sheet"><img class="banner" src="' + BANNER + '"><div class="content">' +
-      '<div class="phhead"><img src="' + LOGO + '" style="width:200px;display:block"><div class="inv"><h1>Photos</h1>' +
-      (s.invNo.trim() ? '<div>Invoice No: ' + esc(s.invNo) + '</div>' : '') + (pages > 1 ? '<div>Page ' + (pg + 1) + ' of ' + pages + '</div>' : '') +
-      '</div></div><div class="phgrid">' + figs + '</div></div></div>');
-  }
-  return out;
-}
-function allSheets(s, c){ return [sheetHTML(s, c)].concat(photoSheetsHTML(s)); }
-
 var pdfBlob = null, pdfUrl = null, pdfName = '';
 function clearPdf(){
   if (pdfUrl) { try { URL.revokeObjectURL(pdfUrl); } catch(e){} }
@@ -330,7 +303,7 @@ function update(){
   $('dueDate').value = c.due;
   $('sub').textContent = money(c.sub); $('vatLbl').textContent = 'VAT ' + c.vp + '%'; $('vat').textContent = money(c.vat);
   $('tot').textContent = money(c.tot); $('paidOut').textContent = money(c.paid); $('bal').textContent = money(c.bal);
-  $('pvInner').innerHTML = allSheets(s, c).join(''); fitPreview();
+  $('pvInner').innerHTML = sheetHTML(s, c); fitPreview();
   save(s); clearPdf(); $('status').textContent = '';
 }
 
@@ -353,7 +326,7 @@ $('addLine').addEventListener('click', function(){ addLine(); update(); });
 $('reset').addEventListener('click', function(){
   if (!window.confirm || window.confirm('Clear everything you have entered?')) {
     ['invNo','invDate','terms','billTo','vatPct','paid'].forEach(function(id){ $(id).value = ''; });
-    $('lines').innerHTML = ''; addLine(); photos = []; renderPhotos(); update(); window.scrollTo(0, 0);
+    $('lines').innerHTML = ''; addLine(); update(); window.scrollTo(0, 0);
   }
 });
 
@@ -361,25 +334,41 @@ $('makePdf').addEventListener('click', function(){
   var btn = $('makePdf'); btn.disabled = true; $('status').textContent = 'Creating PDF…';
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   var s = state(), c = compute(s), holder = $('pdfHolder');
-  var sheets = allSheets(s, c);
-  var pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' }), first = true;
+  holder.innerHTML = sheetHTML(s, c);
+  var sheet = holder.firstChild, PH = 1123, TOPM = 48;
+  var pdf = new window.jspdf.jsPDF({ unit:'mm', format:'a4' });
   var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-  sheets.reduce(function(chain, html, idx){
-    return chain.then(function(){
-      $('status').textContent = sheets.length > 1 ? 'Creating PDF… page ' + (idx + 1) + ' of ' + sheets.length : 'Creating PDF…';
-      holder.innerHTML = html;
-      var imgs = holder.querySelectorAll('img');
-      return Promise.all(Array.prototype.map.call(imgs, function(im){
-        return im.complete ? null : new Promise(function(r){ im.onload = im.onerror = r; });
-      }));
-    }).then(function(){
-      return html2canvas(holder.firstChild, { scale:2, backgroundColor:'#ffffff', width:794, windowWidth:794, logging:false });
-    }).then(function(canvas){
-      var pw = 210, ph = 297, ih = canvas.height * pw / canvas.width, img = canvas.toDataURL('image/jpeg', 0.88), y = 0;
-      do { if (!first) pdf.addPage(); first = false; pdf.addImage(img, 'JPEG', 0, -y, pw, ih); y += ph; } while (y < ih - 2);
+  ready.then(function(){
+    var imgs = holder.querySelectorAll('img');
+    return Promise.all(Array.prototype.map.call(imgs, function(im){ return im.complete ? null : new Promise(function(r){ im.onload = im.onerror = r; }); }));
+  }).then(function(){
+    // work out page breaks between rows, never through a row
+    var base = sheet.getBoundingClientRect().top, blocks = [];
+    Array.prototype.forEach.call(sheet.querySelectorAll('tbody tr'), function(el){
+      var r = el.getBoundingClientRect(); blocks.push([r.top - base, r.bottom - base]);
+    });
+    blocks.push([sheet.querySelector('.tot').getBoundingClientRect().top - base, sheet.querySelector('.notes2').getBoundingClientRect().bottom - base + 4]);
+    var end = Math.max(sheet.scrollHeight, PH), starts = [0], cur = 0, room = PH;
+    blocks.forEach(function(b){
+      if (b[1] - cur > room && b[0] > cur) { cur = b[0] - 6; starts.push(cur); room = PH - TOPM; }
+    });
+    if (starts.length === 1) end = PH;
+    else Array.prototype.forEach.call(sheet.querySelectorAll('.bubble'), function(b){ b.style.display = 'none'; });
+    return html2canvas(sheet, { scale:2, backgroundColor:'#ffffff', width:794, windowWidth:794, logging:false }).then(function(canvas){
+      var k = canvas.width / 794;
+      starts.forEach(function(st, idx){
+        var stop = idx + 1 < starts.length ? starts[idx + 1] : Math.min(end, canvas.height / k);
+        var off = idx === 0 ? 0 : TOPM, hgt = Math.min(stop - st, PH - off);
+        var pc = document.createElement('canvas'); pc.width = canvas.width; pc.height = Math.round(PH * k);
+        var ctx = pc.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, pc.width, pc.height);
+        ctx.drawImage(canvas, 0, Math.round(st * k), canvas.width, Math.round(hgt * k), 0, Math.round(off * k), canvas.width, Math.round(hgt * k));
+        if (idx > 0) pdf.addPage();
+        pdf.addImage(pc.toDataURL('image/jpeg', 0.88), 'JPEG', 0, 0, 210, 297);
+        pc.width = pc.height = 0;
+      });
       canvas.width = canvas.height = 0;
     });
-  }, ready).then(function(){
+  }).then(function(){
     holder.innerHTML = '';
     var client = (s.billTo.split('\n')[0] || '').trim().replace(/[^\w\- ]+/g, '').slice(0, 40);
     pdfName = 'Exclusive Bake Invoice' + (s.invNo.trim() ? ' ' + s.invNo.trim().replace(/[^\w\-]+/g, '') : '') + (client ? ' - ' + client : '') + '.pdf';
