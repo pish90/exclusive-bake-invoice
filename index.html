@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Exclusive Bake Invoice</title>
-<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Parisienne&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -58,20 +58,39 @@
   .sheet h1 { margin:6px 0 8px; font-size:26px; color:#555; }
   .sheet .meta { display:grid; grid-template-columns:auto 130px; gap:2px 18px; text-align:right; }
   .sheet .k { font-weight:700; }
-  .sheet .rule { border:0; border-top:1px solid #e6e6e6; margin:22px -36px 18px; }
-  .sheet .billto { display:grid; grid-template-columns:100px 1fr; min-height:72px; }
+  .sheet .rule { border:0; border-top:1px solid #e6e6e6; margin:16px -36px 14px; }
+  .sheet .billto { display:grid; grid-template-columns:100px 1fr; min-height:60px; }
   .sheet .pre { white-space:pre-wrap; }
   .sheet table { width:calc(100% + 36px); margin:22px 0 0; border-collapse:collapse; }
   .sheet th { font-weight:700; text-align:left; padding:10px 0; border-top:2px solid var(--line); border-bottom:2px solid var(--line); }
   .sheet td { padding:12px 0 16px; vertical-align:top; border-bottom:1px solid #eee; }
   .sheet .r { text-align:right; } .sheet .c { text-align:center; }
   .sheet .lastcol { padding-right:36px; }
-  .sheet .tot { margin:22px -36px 0 auto; width:420px; }
+  .sheet .tot { margin:14px -36px 0 auto; width:420px; }
   .sheet .tot div { display:grid; grid-template-columns:1fr 150px; padding:4px 36px 4px 0; text-align:right; }
   .sheet .tot div span:first-child { padding-right:26px; }
-  .sheet .tot .gap { height:14px; padding:0; }
+  .sheet .tot .gap { height:6px; padding:0; }
   .sheet .tot .bd { border-top:2px solid var(--line); border-bottom:2px solid var(--line); margin-top:6px; padding-top:8px; padding-bottom:8px; font-size:21px; font-weight:700; }
-  .sheet .notes2 { margin-top:36px; }
+  .sheet .notes2 { margin:18px -36px 0; }
+  .sheet .paybox { margin:0 56px; border:1.5px solid #e2b3c0; background:#fdf7f8; padding:10px 24px 10px; }
+  .sheet .ptitle { text-align:center; color:#c97a8f; font-size:19px; font-weight:700; letter-spacing:.06em; }
+  .sheet .ptitle:after { content:''; display:block; width:250px; height:1.5px; background:#c9a46a; margin:4px auto 6px; }
+  .sheet .pgrid { display:grid; grid-template-columns:1fr 1fr; }
+  .sheet .pc { padding:0 22px; }
+  .sheet .pc:first-child { padding-left:0; border-right:1.5px solid #e2b3c0; }
+  .sheet .pc:last-child { padding-right:0; }
+  .sheet .pl { font-size:13px; margin-top:4px; }
+  .sheet .pval { font-size:15px; font-weight:700; padding:0 0 4px; border-bottom:1px solid #d8c29c; }
+  .sheet .pref { margin-top:8px; font-size:14px; text-align:center; }
+  .sheet .pref b { font-size:15px; }
+  .sheet .pfoot { margin-top:14px; border-top:1.5px solid #d8c29c; background:#fbeef0; text-align:center; padding:10px 20px 10px; }
+  .sheet .pfoot .terms { font-size:14.5px; }
+  .sheet .pfoot .thanks { font-family:'Parisienne',cursive; color:#c97a8f; font-size:24px; margin-top:2px; display:flex; align-items:center; justify-content:center; gap:14px; }
+  .sheet .pfoot .thanks img { width:44px; height:22px; }
+  .paycard .prow { display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid #f1e8eb; font-size:15px; }
+  .paycard .prow span:first-child { color:var(--muted); }
+  .paycard .prow span:last-child { font-weight:700; text-align:right; }
+  .paycard .pterms { margin-top:10px; font-size:14px; color:var(--muted); text-align:center; }
   .upload { position:relative; overflow:hidden; }
   .upload input { position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; font-size:0; }
   .lphotos { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:2px 0 10px; }
@@ -130,7 +149,7 @@
   </div>
 
   <h2>Payment details</h2>
-  <div class="card notes" id="notesText"></div>
+  <div class="card paycard" id="payCard"></div>
 
   <h2>Preview</h2>
   <div class="pv" id="pv"><div class="pv-inner" id="pvInner"></div></div>
@@ -167,7 +186,21 @@ function money(n){
 function slashDate(iso){ return iso ? iso.replace(/-/g, '/') : ''; }
 
 $('bizText').innerHTML = esc(BIZ.address) + '<br>' + esc(BIZ.phone) + '<br>' + esc(BIZ.email);
-$('notesText').textContent = BIZ.notes;
+var BANK = { bank:'FNB', name:'Exclusive Bake', acc:'62563279267', branch:'250655' };
+var TERMS = '50% deposit to secure your date. Balance due 2 days before collection.';
+var THANKS = 'Thank you for supporting my business!';
+var SPRIG = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="88" height="44" viewBox="0 0 88 44"><g fill="none" stroke="#c9a46a" stroke-width="1.6" stroke-linecap="round"><path d="M4 30 C30 26 56 22 84 14"/></g><g fill="#d9b98a"><ellipse cx="22" cy="22" rx="7" ry="3" transform="rotate(-35 22 22)"/><ellipse cx="26" cy="33" rx="7" ry="3" transform="rotate(25 26 33)"/><ellipse cx="44" cy="17" rx="7" ry="3" transform="rotate(-40 44 17)"/><ellipse cx="48" cy="29" rx="7" ry="3" transform="rotate(20 48 29)"/><ellipse cx="65" cy="12" rx="6" ry="2.6" transform="rotate(-45 65 12)"/><ellipse cx="68" cy="23" rx="6" ry="2.6" transform="rotate(15 68 23)"/><circle cx="84" cy="14" r="2.4"/></g></svg>');
+var SPRIG_FLIP = 'data:image/svg+xml;base64,' + btoa(atob(SPRIG.split(',')[1]).replace('<g fill="none"', '<g transform="translate(88 0) scale(-1 1)"><g fill="none"').replace('</svg>', '</g></svg>'));
+function payRef(s){
+  var no = (s.invNo || '').trim(), client = (s.billTo.split('\n')[0] || '').trim();
+  var ref = no ? 'INV-' + (/^\d+$/.test(no) ? ('00' + no).slice(-Math.max(3, no.length)) : no) : '';
+  return ref && client ? ref + ' - ' + client : (ref || client || 'Your invoice number and name');
+}
+function drawPayCard(s){
+  $('payCard').innerHTML = [['Bank', BANK.bank], ['Account name', BANK.name], ['Account number', BANK.acc], ['Branch code', BANK.branch], ['Reference', payRef(s)]]
+    .map(function(r){ return '<div class="prow"><span>' + r[0] + '</span><span>' + esc(r[1]) + '</span></div>'; }).join('') +
+    '<div class="pterms">' + esc(TERMS) + '</div>';
+}
 
 function addLine(item){
   item = item || {desc:'', qty:'', rate:''};
@@ -262,7 +295,11 @@ function sheetHTML(s, c){
     '<div><span>Total</span><span>' + money(c.tot) + '</span></div><div class="gap"></div>' +
     '<div><span>Paid</span><span>' + money(c.paid) + '</span></div>' +
     '<div class="bd"><span>Balance Due</span><span>' + money(c.bal) + '</span></div></div>' +
-    '<div class="notes2"><div class="k">Notes</div><div>' + esc(BIZ.notes) + '</div></div>' +
+    '<div class="notes2"><div class="paybox"><div class="ptitle">PAYMENT DETAILS</div><div class="pgrid">' +
+      '<div class="pc"><div class="pl">Bank:</div><div class="pval">' + BANK.bank + '</div><div class="pl">Account Name:</div><div class="pval">' + BANK.name + '</div></div>' +
+      '<div class="pc"><div class="pl">Account Number:</div><div class="pval">' + BANK.acc + '</div><div class="pl">Branch Code:</div><div class="pval">' + BANK.branch + '</div></div>' +
+      '</div><div class="pref">Reference: <b>' + esc(payRef(s)) + '</b></div></div>' +
+      '<div class="pfoot"><div class="terms">' + esc(TERMS) + '</div><div class="thanks"><img src="' + SPRIG_FLIP + '"><span>' + esc(THANKS) + '</span><img src="' + SPRIG + '"></div></div></div>' +
     '</div></div>';
 }
 
@@ -303,7 +340,7 @@ function update(){
   $('dueDate').value = c.due;
   $('sub').textContent = money(c.sub); $('vatLbl').textContent = 'VAT ' + c.vp + '%'; $('vat').textContent = money(c.vat);
   $('tot').textContent = money(c.tot); $('paidOut').textContent = money(c.paid); $('bal').textContent = money(c.bal);
-  $('pvInner').innerHTML = sheetHTML(s, c); fitPreview();
+  drawPayCard(s); $('pvInner').innerHTML = sheetHTML(s, c); fitPreview();
   save(s); clearPdf(); $('status').textContent = '';
 }
 
@@ -347,7 +384,7 @@ $('makePdf').addEventListener('click', function(){
     Array.prototype.forEach.call(sheet.querySelectorAll('tbody tr'), function(el){
       var r = el.getBoundingClientRect(); blocks.push([r.top - base, r.bottom - base]);
     });
-    blocks.push([sheet.querySelector('.tot').getBoundingClientRect().top - base, sheet.querySelector('.notes2').getBoundingClientRect().bottom - base + 4]);
+    ['.tot', '.notes2'].forEach(function(sel){ var r = sheet.querySelector(sel).getBoundingClientRect(); blocks.push([r.top - base, r.bottom - base + 4]); });
     var end = Math.max(sheet.scrollHeight, PH), starts = [0], cur = 0, room = PH;
     blocks.forEach(function(b){
       if (b[1] - cur > room && b[0] > cur) { cur = b[0] - 6; starts.push(cur); room = PH - TOPM; }
